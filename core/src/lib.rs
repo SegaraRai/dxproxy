@@ -10,8 +10,6 @@
 //! The library is designed to be used by DLL entry points that proxies system
 //! graphics libraries while maintaining full API compatibility.
 
-#![windows_subsystem = "windows"]
-
 mod common;
 use common::*;
 

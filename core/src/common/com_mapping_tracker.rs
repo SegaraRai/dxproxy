@@ -50,27 +50,22 @@ impl<T: Interface> NullableInterfaceIn<T> for Option<&T> {
 /// to nullable COM interface outputs, commonly used in COM method calls
 /// that may return null pointers.
 #[derive(Debug, Clone, Copy)]
-pub struct NullableInterfaceOut<T: Interface> {
-    ptr: *mut c_void,
-    _marker: PhantomData<T>,
-}
+#[repr(transparent)]
+pub struct NullableInterfaceOut<T: Interface>(*mut c_void, PhantomData<T>);
 
 impl<T: Interface> NullableInterfaceOut<T> {
     fn new(ptr: *mut c_void) -> Self {
-        Self {
-            ptr,
-            _marker: std::marker::PhantomData,
-        }
+        Self(ptr, PhantomData)
     }
 
     fn as_raw(&self) -> *mut c_void {
-        self.ptr
+        self.0
     }
 }
 
 impl<T: Interface> Param<T> for NullableInterfaceOut<T> {
     unsafe fn param(self) -> ParamValue<T> {
-        ParamValue::Borrowed(self.ptr)
+        ParamValue::Borrowed(self.0)
     }
 }
 
