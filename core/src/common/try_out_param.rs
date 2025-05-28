@@ -29,3 +29,41 @@ where
         None => Err(E_POINTER.into()), // Should never happen if the function is implemented correctly
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_try_out_param_success() {
+        // Test that try_out_param returns the value when successful
+        let result = try_out_param(|out| {
+            *out = Some(42);
+            Ok(())
+        });
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_try_out_param_not_set() {
+        // Test that try_out_param returns E_POINTER when out param not set
+        let result = try_out_param::<i32, _>(|_out| {
+            // Not setting the out parameter
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code(), E_POINTER);
+    }
+
+    #[test]
+    fn test_try_out_param_propagates_error() {
+        // Test that try_out_param propagates errors from the function
+        let error_code = E_INVALIDARG;
+        let result = try_out_param::<i32, _>(|_out| {
+            Err(error_code.into())
+        });
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code(), error_code);
+    }
+}
