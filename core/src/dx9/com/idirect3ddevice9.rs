@@ -59,7 +59,7 @@ impl ProxyDirect3DDevice9 {
     /// [`IDirect3DDevice9Ex`] or [`IDirect3DDevice9`], depending on the target's type.
     ///
     /// [`new`]: Self::new
-    #[instrument(ret, level = "debug")]
+    #[instrument(ret)]
     pub fn new_or_upgrade(target: IDirect3DDevice9, config: DX9ProxyConfig, container: IDirect3D9) -> IDirect3DDevice9 {
         if let Ok(ex_target) = target.cast::<IDirect3DDevice9Ex>() {
             if let Ok(ex_container) = container.cast::<IDirect3D9Ex>() {

@@ -49,7 +49,7 @@ impl ProxyDirect3D9 {
     /// [`IDirect3D9Ex`] or [`IDirect3D9`], depending on the target's type.
     ///
     /// [`new`]: Self::new
-    #[instrument(ret, level = "debug")]
+    #[instrument(ret)]
     pub fn new_or_upgrade(target: IDirect3D9) -> IDirect3D9 {
         if let Ok(ex_target) = target.cast::<IDirect3D9Ex>() {
             let ex_interface: IDirect3D9Ex = ProxyDirect3D9Ex::new(ex_target).into();
