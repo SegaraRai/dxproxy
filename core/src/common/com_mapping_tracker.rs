@@ -149,6 +149,7 @@ impl ComMappingTracker {
             // If we already have a proxy for this org surface, return it
             // - Decrease ref count of target via drop
             // - Increase ref count of proxy
+            #[cfg(feature = "tracing")]
             tracing::debug!("Found existing {} proxy: {proxy_ptr:?} (<=> {target_ptr:?})", type_name::<T>());
             return Ok(unsafe { add_ref(T::from_raw(*proxy_ptr)) });
         }
@@ -163,7 +164,9 @@ impl ComMappingTracker {
         self.target_to_proxy.insert(target_ptr, proxy_ptr);
         self.proxy_to_target.insert(proxy_ptr, target_ptr);
 
+        #[cfg(feature = "tracing")]
         tracing::debug!("Created new {} proxy: {proxy_ptr:p} (<=> {target_ptr:p})", type_name::<T>());
+        #[cfg(feature = "tracing")]
         tracing::trace!("Current maps: {self:?}");
 
         // Return the pointer to the new proxy
@@ -219,6 +222,7 @@ impl ComMappingTracker {
         // - Increase ref count of proxy
         let target_ptr = target.as_raw();
         let result = self.target_to_proxy.get(&target_ptr).map(|proxy_ptr| unsafe { add_ref(transmute_copy::<_, T>(proxy_ptr)) });
+        #[cfg(feature = "tracing")]
         match &result {
             Some(proxy) => tracing::debug!("Retrieved {} proxy: {:p} (<=> {target_ptr:p})", type_name::<T>(), proxy.as_raw()),
             None => tracing::warn!("No {} proxy found: NOTFOUND (<=> {target_ptr:p})", type_name::<T>()),
@@ -255,11 +259,13 @@ impl ComMappingTracker {
         let proxy_ptr = match proxy.as_ref() {
             Some(obj_ref) => obj_ref.as_raw(),
             None => {
+                #[cfg(feature = "tracing")]
                 tracing::warn!("Attempted to get target for a null proxy reference of type {}, treating as not found", type_name::<T>());
                 return None;
             }
         };
         let result = self.proxy_to_target.get(&proxy_ptr).map(|target_ptr| NullableInterfaceOut::new(*target_ptr));
+        #[cfg(feature = "tracing")]
         match &result {
             Some(target) => tracing::debug!("Retrieved {} target of proxy: {proxy_ptr:p} (<=> {:p})", type_name::<T>(), target.as_raw()),
             None => tracing::warn!("No target found for {} proxy: {proxy_ptr:p} (<=> NOTFOUND)", type_name::<T>()),
@@ -299,11 +305,13 @@ impl ComMappingTracker {
         let proxy_ptr = match proxy.as_ref() {
             Some(obj_ref) => obj_ref.as_raw(),
             None => {
+                #[cfg(feature = "tracing")]
                 tracing::debug!("Returning nullptr for null proxy reference of type {}", type_name::<T>());
                 return Some(NullableInterfaceOut::new(null_mut()));
             }
         };
         let result = self.proxy_to_target.get(&proxy_ptr).map(|target_ptr| NullableInterfaceOut::new(*target_ptr));
+        #[cfg(feature = "tracing")]
         match &result {
             Some(target) => tracing::debug!("Retrieved {} target of proxy: {proxy_ptr:p} (<=> {:p})", type_name::<T>(), target.as_raw()),
             None => tracing::warn!("No target found for {} proxy pointer: {proxy_ptr:p} (<=> NOTFOUND)", type_name::<T>()),
@@ -343,8 +351,10 @@ impl ComMappingTracker {
         let target_ptr = target.as_raw();
         if let Some(proxy_ptr) = self.target_to_proxy.remove(&target_ptr) {
             self.proxy_to_target.remove(&proxy_ptr);
+            #[cfg(feature = "tracing")]
             tracing::debug!("{} proxy destroyed: {proxy_ptr:p} (<=> {target_ptr:p})", type_name::<T>());
         } else {
+            #[cfg(feature = "tracing")]
             tracing::warn!("{} proxy destroyed, but no entry found in storage for target pointer: NOTFOUND (<=> {target_ptr:p})", type_name::<T>());
         }
     }

@@ -1,7 +1,6 @@
 //! [`IDirect3DSwapChain9Ex`] proxy implementation.
 
 use super::*;
-use tracing::instrument;
 use windows::{
     Win32::Foundation::*,
     Win32::Graphics::{Direct3D9::*, Gdi::*},
@@ -17,7 +16,7 @@ pub struct ProxyDirect3DSwapChain9Ex {
 }
 
 impl ProxyDirect3DSwapChain9Ex {
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     pub fn new(target: IDirect3DSwapChain9Ex, context: DX9ProxyDeviceContext, proxy_device: IDirect3DDevice9) -> Self {
         Self {
             proxy: ProxyDirect3DSwapChain9::new(target.clone().into(), context.clone(), proxy_device).into_object(),
@@ -28,7 +27,7 @@ impl ProxyDirect3DSwapChain9Ex {
 }
 
 impl Drop for ProxyDirect3DSwapChain9Ex {
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     fn drop(&mut self) {
         self.context.on_proxy_destroy(&self.target);
     }
@@ -38,17 +37,17 @@ impl_debug!(ProxyDirect3DSwapChain9Ex_Impl);
 
 #[allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 impl IDirect3DSwapChain9Ex_Impl for ProxyDirect3DSwapChain9Ex_Impl {
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetLastPresentCount(&self, plastpresentcount: *mut u32) -> Result<()> {
         unsafe { self.target.GetLastPresentCount(plastpresentcount) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetPresentStats(&self, ppresentationstatistics: *mut D3DPRESENTSTATS) -> Result<()> {
         unsafe { self.target.GetPresentStats(ppresentationstatistics) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetDisplayModeEx(&self, pmode: *mut D3DDISPLAYMODEEX, protation: *mut D3DDISPLAYROTATION) -> Result<()> {
         unsafe { self.target.GetDisplayModeEx(pmode, protation) }
     }

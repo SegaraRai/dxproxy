@@ -18,8 +18,6 @@ use std::{
     mem::transmute,
     sync::{Mutex, Once},
 };
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 use windows::{
     Win32::{
         Foundation::*,
@@ -41,14 +39,11 @@ static mut ORIGINAL_DIRECT3DCREATE9: Option<extern "system" fn(u32) -> Option<ID
 /// Function pointer to the original Direct3DCreate9Ex function.
 static mut ORIGINAL_DIRECT3DCREATE9EX: Option<extern "system" fn(u32, *mut Option<IDirect3D9Ex>) -> HRESULT> = None;
 
-/// Initializes the proxy DLL by setting up logging and loading the original d3d9.dll.
-///
-/// This function:
-/// - Allocates a console for debug output
-/// - Sets up tracing with both console and file logging
-/// - Loads the original system d3d9.dll from System32
-/// - Resolves Direct3DCreate9 and Direct3DCreate9Ex function pointers
-fn init() {
+#[cfg(any(feature = "tracing", feature = "tracing-instrument"))]
+fn init_tracing() {
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
     let do_alloc_console = var("DXPROXY_ALLOC_CONSOLE").map_or(true, |v| v == "1");
     if do_alloc_console {
         let _ = unsafe { AllocConsole() }.inspect_err(|err| {
@@ -92,6 +87,18 @@ fn init() {
             tracing::warn!("Failed to create log file {log_filename}: {err}, using console-only logging");
         }
     }
+}
+
+/// Initializes the proxy DLL by setting up logging and loading the original d3d9.dll.
+///
+/// This function:
+/// - Allocates a console for debug output
+/// - Sets up tracing with both console and file logging
+/// - Loads the original system d3d9.dll from System32
+/// - Resolves Direct3DCreate9 and Direct3DCreate9Ex function pointers
+fn init() {
+    #[cfg(any(feature = "tracing", feature = "tracing-instrument"))]
+    init_tracing();
 
     // Load the original d3d9.dll
     #[allow(clippy::missing_transmute_annotations)]
@@ -100,14 +107,16 @@ fn init() {
         let original_dll = LoadLibraryW(&HSTRING::from(format!("{windows_dir}\\System32\\d3d9.dll")));
         match original_dll {
             Ok(dll_handle) => {
+                #[cfg(feature = "tracing")]
                 tracing::info!("Successfully loaded d3d9.dll: {dll_handle:?}");
 
                 ORIGINAL_D3D9 = dll_handle;
                 ORIGINAL_DIRECT3DCREATE9 = transmute(GetProcAddress(dll_handle, s!("Direct3DCreate9")));
                 ORIGINAL_DIRECT3DCREATE9EX = transmute(GetProcAddress(dll_handle, s!("Direct3DCreate9Ex")));
             }
-            Err(err) => {
-                tracing::error!("Failed to load d3d9.dll: {err}");
+            Err(_err) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to load d3d9.dll: {_err}");
             }
         }
     }
@@ -132,24 +141,36 @@ fn init() {
 pub unsafe extern "system" fn Direct3DCreate9(sdkversion: u32) -> Option<IDirect3D9> {
     INIT.call_once(init);
 
+    #[cfg(feature = "tracing")]
     tracing::info!("Direct3DCreate9 called with SDK version: {sdkversion}");
 
     if let Some(create_fn) = unsafe { ORIGINAL_DIRECT3DCREATE9 } {
+        #[cfg(feature = "tracing")]
         tracing::debug!("Calling original Direct3DCreate9 function");
+
         let d3d9 = create_fn(sdkversion);
         if let Some(d3d9) = d3d9 {
+            #[cfg(feature = "tracing")]
             tracing::info!("Successfully created IDirect3D9, creating proxy wrapper");
+
             let proxy = ProxyDirect3D9::new_or_upgrade(d3d9);
+
+            #[cfg(feature = "tracing")]
             tracing::debug!("ProxyDirect3D9 created: {proxy:?}");
+
             return Some(proxy);
         } else {
+            #[cfg(feature = "tracing")]
             tracing::error!("Original Direct3DCreate9 returned null for SDK version {sdkversion}");
         }
     } else {
+        #[cfg(feature = "tracing")]
         tracing::error!("Original Direct3DCreate9 function not loaded from system d3d9.dll");
     }
 
+    #[cfg(feature = "tracing")]
     tracing::error!("Direct3DCreate9 failed, returning null");
+
     None
 }
 
@@ -174,14 +195,18 @@ pub unsafe extern "system" fn Direct3DCreate9(sdkversion: u32) -> Option<IDirect
 pub unsafe extern "system" fn Direct3DCreate9Ex(sdkversion: u32, ppd3d: *mut Option<IDirect3D9Ex>) -> HRESULT {
     INIT.call_once(init);
 
+    #[cfg(feature = "tracing")]
     tracing::info!("Direct3DCreate9Ex called with SDK version: {sdkversion}");
 
     if ppd3d.is_null() {
+        #[cfg(feature = "tracing")]
         tracing::error!("Direct3DCreate9Ex called with null output parameter");
+
         return E_POINTER;
     }
 
     if let Some(create_fn) = unsafe { ORIGINAL_DIRECT3DCREATE9EX } {
+        #[cfg(feature = "tracing")]
         tracing::debug!("Calling original Direct3DCreate9Ex function");
 
         let mut d3d9_ex: Option<IDirect3D9Ex> = None;
@@ -190,24 +215,37 @@ pub unsafe extern "system" fn Direct3DCreate9Ex(sdkversion: u32, ppd3d: *mut Opt
         match result {
             Ok(_) => {
                 if let Some(d3d9_ex) = d3d9_ex {
+                    #[cfg(feature = "tracing")]
                     tracing::info!("Successfully created IDirect3D9Ex, creating proxy wrapper");
+
                     let wrapped_ex = ProxyDirect3D9Ex::new(d3d9_ex);
+
+                    #[cfg(feature = "tracing")]
                     tracing::debug!("ProxyDirect3D9Ex created: {wrapped_ex:?}");
+
                     unsafe { ppd3d.write(Some(wrapped_ex.into())) };
+
+                    #[cfg(feature = "tracing")]
                     tracing::info!("Direct3DCreate9Ex completed successfully");
+
                     return S_OK;
                 } else {
+                    #[cfg(feature = "tracing")]
                     tracing::error!("Original Direct3DCreate9Ex succeeded but returned null IDirect3D9Ex");
                 }
             }
-            Err(err) => {
-                tracing::error!("Original Direct3DCreate9Ex failed with {err} for SDK version {sdkversion}");
+            Err(_err) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Original Direct3DCreate9Ex failed with {_err} for SDK version {sdkversion}");
             }
         }
     } else {
+        #[cfg(feature = "tracing")]
         tracing::error!("Original Direct3DCreate9Ex function not loaded from system d3d9.dll");
     }
 
+    #[cfg(feature = "tracing")]
     tracing::error!("Direct3DCreate9Ex failed, returning E_NOTIMPL");
+
     E_NOTIMPL
 }

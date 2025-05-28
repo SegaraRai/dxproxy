@@ -10,7 +10,6 @@ use std::{
     mem::{transmute, transmute_copy},
     slice::from_raw_parts,
 };
-use tracing::instrument;
 use windows::{
     Win32::{
         Foundation::*,
@@ -36,7 +35,7 @@ pub struct ProxyDirect3DDevice9Ex {
 }
 
 impl ProxyDirect3DDevice9Ex {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     pub fn new(target: IDirect3DDevice9Ex, config: DX9ProxyConfig, container: IDirect3D9Ex) -> Self {
         let proxy = ProxyDirect3DDevice9::new(target.clone().into(), config, container.into());
         let context = proxy.get_context().clone();
@@ -46,7 +45,7 @@ impl ProxyDirect3DDevice9Ex {
 }
 
 impl Drop for ProxyDirect3DDevice9Ex {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     fn drop(&mut self) {}
 }
 
@@ -54,12 +53,12 @@ impl_debug!(ProxyDirect3DDevice9Ex_Impl);
 
 #[allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn CheckDeviceState(&self, hdestinationwindow: HWND) -> Result<()> {
         unsafe { self.target.CheckDeviceState(hdestinationwindow) }
     }
 
-    #[instrument(err, ret, level = "trace", skip(presourcearray))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(presourcearray)))]
     fn CheckResourceResidency(&self, presourcearray: OutRef<IDirect3DResource9>, numresources: u32) -> Result<()> {
         let proxies: &[Option<&IDirect3DResource9>] = unsafe { from_raw_parts(transmute_copy(&presourcearray), numresources as usize) };
         let targets = proxies
@@ -72,7 +71,7 @@ impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
         }
     }
 
-    #[instrument(err, ret, level = "trace", skip(psrc, pdst, psrcrectdescs, pdstrectdescs))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(psrc, pdst, psrcrectdescs, pdstrectdescs)))]
     fn ComposeRects(
         &self,
         psrc: Ref<IDirect3DSurface9>,
@@ -95,7 +94,7 @@ impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
         }
     }
 
-    #[instrument(err, ret, level = "trace", skip(ppsurface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(ppsurface)))]
     fn CreateDepthStencilSurfaceEx(
         &self,
         width: u32,
@@ -120,7 +119,7 @@ impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
         ppsurface.write(Some(proxy))
     }
 
-    #[instrument(err, ret, level = "trace", skip(ppsurface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(ppsurface)))]
     fn CreateOffscreenPlainSurfaceEx(&self, width: u32, height: u32, format: D3DFORMAT, pool: D3DPOOL, ppsurface: OutRef<IDirect3DSurface9>, psharedhandle: *mut HANDLE, usage: u32) -> Result<()> {
         check_nullptr!(ppsurface);
 
@@ -131,7 +130,7 @@ impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
         ppsurface.write(Some(proxy))
     }
 
-    #[instrument(err, ret, level = "trace", skip(ppsurface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(ppsurface)))]
     fn CreateRenderTargetEx(
         &self,
         width: u32,
@@ -156,47 +155,47 @@ impl IDirect3DDevice9Ex_Impl for ProxyDirect3DDevice9Ex_Impl {
         ppsurface.write(Some(proxy))
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn PresentEx(&self, psourcerect: *const RECT, pdestrect: *const RECT, hdestwindowoverride: HWND, pdirtyregion: *const RGNDATA, dwflags: u32) -> Result<()> {
         unsafe { self.target.PresentEx(psourcerect, pdestrect, hdestwindowoverride, pdirtyregion, dwflags) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn ResetEx(&self, ppresentationparameters: *mut D3DPRESENT_PARAMETERS, pfullscreendisplaymode: *mut D3DDISPLAYMODEEX) -> Result<()> {
         unsafe { self.target.ResetEx(ppresentationparameters, pfullscreendisplaymode) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetDisplayModeEx(&self, iswapchain: u32, pmode: *mut D3DDISPLAYMODEEX, protation: *mut D3DDISPLAYROTATION) -> Result<()> {
         unsafe { self.target.GetDisplayModeEx(iswapchain, pmode, protation) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn SetConvolutionMonoKernel(&self, width: u32, height: u32, rows: *mut f32, columns: *mut f32) -> Result<()> {
         unsafe { self.target.SetConvolutionMonoKernel(width, height, rows, columns) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn SetGPUThreadPriority(&self, priority: i32) -> Result<()> {
         unsafe { self.target.SetGPUThreadPriority(priority) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetGPUThreadPriority(&self, ppriority: *mut i32) -> Result<()> {
         unsafe { self.target.GetGPUThreadPriority(ppriority) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn SetMaximumFrameLatency(&self, maxlatency: u32) -> Result<()> {
         unsafe { self.target.SetMaximumFrameLatency(maxlatency) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn GetMaximumFrameLatency(&self, pmaxlatency: *mut u32) -> Result<()> {
         unsafe { self.target.GetMaximumFrameLatency(pmaxlatency) }
     }
 
-    #[instrument(err, ret, level = "trace")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace"))]
     fn WaitForVBlank(&self, iswapchain: u32) -> Result<()> {
         unsafe { self.target.WaitForVBlank(iswapchain) }
     }

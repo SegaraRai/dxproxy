@@ -6,7 +6,6 @@
 
 use super::*;
 use std::ffi::c_void;
-use tracing::instrument;
 use windows::{
     Win32::{
         Foundation::*,
@@ -30,7 +29,7 @@ pub struct ProxyDirect3D9Ex {
 }
 
 impl ProxyDirect3D9Ex {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     pub fn new(target: IDirect3D9Ex) -> Self {
         Self {
             proxy: ProxyDirect3D9::new(target.clone().into()).into(),
@@ -40,7 +39,7 @@ impl ProxyDirect3D9Ex {
 }
 
 impl Drop for ProxyDirect3D9Ex {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     fn drop(&mut self) {}
 }
 
@@ -48,7 +47,7 @@ impl_debug!(ProxyDirect3D9Ex_Impl);
 
 #[allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 impl IDirect3D9Ex_Impl for ProxyDirect3D9Ex_Impl {
-    #[instrument(err, ret, skip(ppreturneddeviceinterface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, skip(ppreturneddeviceinterface)))]
     fn CreateDeviceEx(
         &self,
         adapter: u32,
@@ -67,28 +66,30 @@ impl IDirect3D9Ex_Impl for ProxyDirect3D9Ex_Impl {
         })?;
 
         let config = DX9ProxyConfig;
+
+        #[cfg(feature = "tracing")]
         tracing::debug!("Creating ProxyDirect3DDevice9Ex for {device:?} with config: {config:?}");
 
         let proxy = ProxyDirect3DDevice9Ex::new(device, config, self.to_interface());
         ppreturneddeviceinterface.write(Some(proxy.into()))
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn EnumAdapterModesEx(&self, adapter: u32, pfilter: *const D3DDISPLAYMODEFILTER, mode: u32, pmode: *mut D3DDISPLAYMODEEX) -> Result<()> {
         unsafe { self.target.EnumAdapterModesEx(adapter, pfilter, mode, pmode) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn GetAdapterDisplayModeEx(&self, adapter: u32, pmode: *mut D3DDISPLAYMODEEX, protation: *mut D3DDISPLAYROTATION) -> Result<()> {
         unsafe { self.target.GetAdapterDisplayModeEx(adapter, pmode, protation) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn GetAdapterLUID(&self, adapter: u32, pluid: *mut LUID) -> Result<()> {
         unsafe { self.target.GetAdapterLUID(adapter, pluid) }
     }
 
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     fn GetAdapterModeCountEx(&self, adapter: u32, pfilter: *const D3DDISPLAYMODEFILTER) -> u32 {
         unsafe { self.target.GetAdapterModeCountEx(adapter, pfilter) }
     }

@@ -3,15 +3,20 @@ name = "dxproxy"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = ["tracing", "tracing-instrument"]
+tracing = ["dep:tracing", "dep:tracing-subscriber"]
+tracing-instrument = ["dep:tracing", "dep:tracing-subscriber"]
+
 [dependencies]
 tracing = { version = "0.1", features = [
     "attributes",
     "log",
-], default-features = false }
+], default-features = false, optional = true }
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "fmt",
-], default-features = false }
+], default-features = false, optional = true }
 windows-core = "0.61"
 windows-numerics = "0.2"
 

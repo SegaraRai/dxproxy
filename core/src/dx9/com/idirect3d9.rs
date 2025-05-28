@@ -6,7 +6,6 @@
 
 use super::*;
 use std::ffi::c_void;
-use tracing::instrument;
 use windows::{
     Win32::{
         Foundation::*,
@@ -27,7 +26,7 @@ pub struct ProxyDirect3D9 {
 }
 
 impl ProxyDirect3D9 {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     pub fn new(target: IDirect3D9) -> Self {
         Self { target }
     }
@@ -49,7 +48,7 @@ impl ProxyDirect3D9 {
     /// [`IDirect3D9Ex`] or [`IDirect3D9`], depending on the target's type.
     ///
     /// [`new`]: Self::new
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     pub fn new_or_upgrade(target: IDirect3D9) -> IDirect3D9 {
         if let Ok(ex_target) = target.cast::<IDirect3D9Ex>() {
             let ex_interface: IDirect3D9Ex = ProxyDirect3D9Ex::new(ex_target).into();
@@ -62,7 +61,7 @@ impl ProxyDirect3D9 {
 }
 
 impl Drop for ProxyDirect3D9 {
-    #[instrument(ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret))]
     fn drop(&mut self) {}
 }
 
@@ -76,7 +75,7 @@ impl_debug!(ProxyDirect3D9_Impl);
 /// to expose only the necessary interface instances, ensuring proper type consistency.
 #[allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref, clippy::too_many_arguments)]
 impl ProxyDirect3D9_Impl {
-    #[instrument(err, ret, level = "trace", skip(get_self_interface, ppreturneddeviceinterface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "trace", skip(get_self_interface, ppreturneddeviceinterface)))]
     pub(super) unsafe fn CreateDevice_Impl<F: FnOnce() -> IDirect3D9>(
         &self,
         get_self_interface: F,
@@ -92,6 +91,8 @@ impl ProxyDirect3D9_Impl {
         let device = try_out_param(|out| unsafe { self.target.CreateDevice(adapter, devicetype, hfocuswindow, behaviorflags, ppresentationparameters, out) })?;
 
         let config = DX9ProxyConfig;
+
+        #[cfg(feature = "tracing")]
         tracing::debug!("Creating ProxyDirect3DDevice9 for {device:?} with config: {config:?}");
 
         let proxy = ProxyDirect3DDevice9::new_or_upgrade(device, config, get_self_interface());
@@ -106,47 +107,47 @@ impl ProxyDirect3D9_Impl {
 /// when dealing with interface inheritance (e.g., [`IDirect3D9Ex`] extending [`IDirect3D9`]).
 #[allow(non_snake_case, clippy::not_unsafe_ptr_arg_deref)]
 impl IDirect3D9_Impl for ProxyDirect3D9_Impl {
-    #[instrument(err, ret)]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret))]
     fn RegisterSoftwareDevice(&self, pinitializefunction: *mut c_void) -> Result<()> {
         unsafe { self.target.RegisterSoftwareDevice(pinitializefunction) }
     }
 
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     fn GetAdapterCount(&self) -> u32 {
         unsafe { self.target.GetAdapterCount() }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn GetAdapterIdentifier(&self, adapter: u32, flags: u32, pidentifier: *mut D3DADAPTER_IDENTIFIER9) -> Result<()> {
         unsafe { self.target.GetAdapterIdentifier(adapter, flags, pidentifier) }
     }
 
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     fn GetAdapterModeCount(&self, adapter: u32, format: D3DFORMAT) -> u32 {
         unsafe { self.target.GetAdapterModeCount(adapter, format) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn EnumAdapterModes(&self, adapter: u32, format: D3DFORMAT, mode: u32, pmode: *mut D3DDISPLAYMODE) -> Result<()> {
         unsafe { self.target.EnumAdapterModes(adapter, format, mode, pmode) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn GetAdapterDisplayMode(&self, adapter: u32, pmode: *mut D3DDISPLAYMODE) -> Result<()> {
         unsafe { self.target.GetAdapterDisplayMode(adapter, pmode) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn CheckDeviceType(&self, adapter: u32, devtype: D3DDEVTYPE, adapterformat: D3DFORMAT, backbufferformat: D3DFORMAT, bwindowed: BOOL) -> Result<()> {
         unsafe { self.target.CheckDeviceType(adapter, devtype, adapterformat, backbufferformat, bwindowed.into()) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn CheckDeviceFormat(&self, adapter: u32, devicetype: D3DDEVTYPE, adapterformat: D3DFORMAT, usage: u32, rtype: D3DRESOURCETYPE, checkformat: D3DFORMAT) -> Result<()> {
         unsafe { self.target.CheckDeviceFormat(adapter, devicetype, adapterformat, usage, rtype, checkformat) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn CheckDeviceMultiSampleType(&self, adapter: u32, devicetype: D3DDEVTYPE, surfaceformat: D3DFORMAT, windowed: BOOL, multisampletype: D3DMULTISAMPLE_TYPE, pqualitylevels: *mut u32) -> Result<()> {
         unsafe {
             self.target
@@ -154,27 +155,27 @@ impl IDirect3D9_Impl for ProxyDirect3D9_Impl {
         }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn CheckDepthStencilMatch(&self, adapter: u32, devicetype: D3DDEVTYPE, adapterformat: D3DFORMAT, rendertargetformat: D3DFORMAT, depthstencilformat: D3DFORMAT) -> Result<()> {
         unsafe { self.target.CheckDepthStencilMatch(adapter, devicetype, adapterformat, rendertargetformat, depthstencilformat) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn CheckDeviceFormatConversion(&self, adapter: u32, devicetype: D3DDEVTYPE, sourceformat: D3DFORMAT, targetformat: D3DFORMAT) -> Result<()> {
         unsafe { self.target.CheckDeviceFormatConversion(adapter, devicetype, sourceformat, targetformat) }
     }
 
-    #[instrument(err, ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, level = "debug"))]
     fn GetDeviceCaps(&self, adapter: u32, devicetype: D3DDEVTYPE, pcaps: *mut D3DCAPS9) -> Result<()> {
         unsafe { self.target.GetDeviceCaps(adapter, devicetype, pcaps) }
     }
 
-    #[instrument(ret, level = "debug")]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(ret, level = "debug"))]
     fn GetAdapterMonitor(&self, adapter: u32) -> HMONITOR {
         unsafe { self.target.GetAdapterMonitor(adapter) }
     }
 
-    #[instrument(err, ret, skip(ppreturneddeviceinterface))]
+    #[cfg_attr(feature = "tracing-instrument", tracing::instrument(err, ret, skip(ppreturneddeviceinterface)))]
     fn CreateDevice(
         &self,
         adapter: u32,

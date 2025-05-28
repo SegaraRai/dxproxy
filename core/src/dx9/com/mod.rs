@@ -50,12 +50,14 @@ macro_rules! impl_debug {
 macro_rules! check_nullptr {
     ($ptr:expr) => {
         if $ptr.is_null() {
+            #[cfg(feature = "tracing")]
             tracing::error!("Null pointer passed to {}", stringify!($ptr));
             return Err(D3DERR_INVALIDCALL.into());
         }
     };
     ($ptr:expr, $err:expr) => {
         if $ptr.is_null() {
+            #[cfg(feature = "tracing")]
             tracing::error!("Null pointer passed to {}", stringify!($ptr));
             return Err($err);
         }
