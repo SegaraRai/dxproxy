@@ -1,0 +1,13 @@
+[package]
+name = "d3d9"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dxproxy = { path = "../../core" }
+
+[build-dependencies]
+embed-resource = "3"

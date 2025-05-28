@@ -1,0 +1,7 @@
+[workspace]
+resolver = "3"
+members = ["core", "entrypoints/d3d9"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
