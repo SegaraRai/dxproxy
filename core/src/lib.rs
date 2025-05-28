@@ -15,6 +15,9 @@ use common::*;
 
 pub mod dx9;
 
+#[cfg(test)]
+mod tests;
+
 pub use windows;
 pub use windows_core;
 pub use windows_numerics;

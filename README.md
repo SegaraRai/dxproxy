@@ -175,6 +175,23 @@ The DirectX 9 proxy provides complete coverage of the Direct3D 9 API:
 
 ## Development
 
+### Testing
+
+The project includes unit and integration tests to verify proxy behavior:
+
+```bash
+# Run all tests
+cargo test
+
+# Run a specific test
+cargo test common::try_out_param::tests::test_try_out_param_success
+
+# Run with logging enabled
+RUST_LOG=debug cargo test -- --nocapture
+```
+
+See `core/src/tests/README.md` for more details about the testing approach.
+
 ### Adding Custom Functionality
 
 The proxy system is designed to be easily extensible. To add custom behavior:
