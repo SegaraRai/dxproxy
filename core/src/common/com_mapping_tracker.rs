@@ -359,3 +359,147 @@ impl ComMappingTracker {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{ptr::NonNull, sync::Arc};
+    
+    // Simplified mock COM interfaces for testing
+    struct MockTarget {
+        value: i32,
+    }
+    
+    struct MockProxy {
+        target: Arc<MockTarget>,
+    }
+    
+    // Minimal COM interface implementation traits for our mocks
+    impl MockTarget {
+        fn as_raw(&self) -> *mut c_void {
+            self as *const _ as *mut c_void
+        }
+    }
+    
+    impl MockProxy {
+        fn as_raw(&self) -> *mut c_void {
+            self as *const _ as *mut c_void
+        }
+    }
+    
+    // Simple wrapper to treat our mock types as COM interfaces for testing
+    struct MockInterface<T>(Arc<T>);
+    
+    impl<T> MockInterface<T> {
+        fn new(value: T) -> Self {
+            Self(Arc::new(value))
+        }
+        
+        fn as_raw(&self) -> *mut c_void {
+            self.0.as_ref() as *const _ as *mut c_void
+        }
+        
+        fn clone(&self) -> Self {
+            Self(Arc::clone(&self.0))
+        }
+    }
+    
+    impl<T: std::fmt::Debug> Debug for MockInterface<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "MockInterface({:?})", self.0)
+        }
+    }
+    
+    // Mock interface trait to simulate COM interfaces
+    trait MockInterfaceTrait {
+        fn as_raw(&self) -> *mut c_void;
+        fn clone(&self) -> Self;
+    }
+    
+    // Implement interface trait for our mock types
+    impl MockInterfaceTrait for MockInterface<MockTarget> {
+        fn as_raw(&self) -> *mut c_void {
+            MockInterface::as_raw(self)
+        }
+        
+        fn clone(&self) -> Self {
+            MockInterface::clone(self)
+        }
+    }
+    
+    impl MockInterfaceTrait for MockInterface<MockProxy> {
+        fn as_raw(&self) -> *mut c_void {
+            MockInterface::as_raw(self)
+        }
+        
+        fn clone(&self) -> Self {
+            MockInterface::clone(self)
+        }
+    }
+    
+    // Test simple mapping creation and lookup
+    #[test]
+    fn test_mapping_creation_and_lookup() {
+        let mut tracker = ComMappingTracker::default();
+        
+        // Create pointers that we can use for testing without real COM objects
+        let target_ptr = Box::into_raw(Box::new(42)) as *mut c_void;
+        let proxy_ptr = Box::into_raw(Box::new(24)) as *mut c_void;
+        
+        // Manually add mapping
+        tracker.target_to_proxy.insert(target_ptr, proxy_ptr);
+        tracker.proxy_to_target.insert(proxy_ptr, target_ptr);
+        
+        // Check lookups
+        assert_eq!(tracker.target_to_proxy.get(&target_ptr), Some(&proxy_ptr));
+        assert_eq!(tracker.proxy_to_target.get(&proxy_ptr), Some(&target_ptr));
+        
+        // Cleanup to prevent memory leaks in test
+        unsafe {
+            let _ = Box::from_raw(target_ptr as *mut i32);
+            let _ = Box::from_raw(proxy_ptr as *mut i32);
+        }
+    }
+    
+    // Test mapping removal through on_proxy_destroy
+    #[test]
+    fn test_mapping_removal() {
+        let mut tracker = ComMappingTracker::default();
+        
+        // Create pointers for testing
+        let target_ptr = Box::into_raw(Box::new(42)) as *mut c_void;
+        let proxy_ptr = Box::into_raw(Box::new(24)) as *mut c_void;
+        
+        // Set up mappings
+        tracker.target_to_proxy.insert(target_ptr, proxy_ptr);
+        tracker.proxy_to_target.insert(proxy_ptr, target_ptr);
+        
+        // Create a wrapper struct that implements required method for on_proxy_destroy
+        struct TargetWrapper(*mut c_void);
+        
+        impl Interface for TargetWrapper {
+            fn as_raw(&self) -> *mut c_void {
+                self.0
+            }
+        }
+        
+        impl Debug for TargetWrapper {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "TargetWrapper({:p})", self.0)
+            }
+        }
+        
+        // Call on_proxy_destroy
+        tracker.on_proxy_destroy(&TargetWrapper(target_ptr));
+        
+        // Verify mappings are removed
+        assert_eq!(tracker.target_to_proxy.get(&target_ptr), None);
+        assert_eq!(tracker.proxy_to_target.get(&proxy_ptr), None);
+        
+        // Cleanup
+        unsafe {
+            let _ = Box::from_raw(target_ptr as *mut i32);
+            let _ = Box::from_raw(proxy_ptr as *mut i32);
+        }
+    }
+}
