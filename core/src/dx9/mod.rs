@@ -9,5 +9,8 @@ pub mod com;
 pub mod config;
 pub mod dll;
 
+#[cfg(test)]
+mod tests;
+
 pub use config::*;
 pub use dll::*;
